@@ -19,7 +19,7 @@ setup(
     license='BSD',
     entry_points={
         'console_scripts': [
-            'controller_and_disturbance_node = mppi_controller.main:main',  # The main entry point to run both nodes
+            'mppi_controller_node = mppi_controller.main:main'
         ],
     },
 )

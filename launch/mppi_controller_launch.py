@@ -7,17 +7,9 @@ def generate_launch_description():
         # Node for the MPPIController
         Node(
             package='mppi_controller',
-            executable='controller_and_disturbance_node',
+            executable='mppi_controller_node',
             name='mppi_controller',
             output='screen',
             parameters=[]
-        ),
-        # Node for the DisturbanceInjector
-        Node(
-            package='mppi_controller',
-            executable='controller_and_disturbance_node',
-            name='disturbance_injector',
-            output='screen',
-            parameters=[]
-        ),
+        )
     ])

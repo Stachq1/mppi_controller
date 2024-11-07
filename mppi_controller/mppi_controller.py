@@ -7,13 +7,7 @@ class MPPIController(Node):
         super().__init__('mppi_controller')
         self.get_logger().info('MPPIController node has started')
         self.twist_publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.state_publisher_ = self.create_subscription(Pose, '/predicted_state', 10)
-        self.state_subscriber_ = self.create_subscription(
-            Pose,
-            '/disturbed_state',
-            self.update_state,
-            10
-        )
+        self.timer = self.create_timer(0.1, self.update_state)
 
         self.current_state = np.array([0.0, 0.0, 0.0])                      # Starting position
         self.goal = np.array([5.0, 5.0, 0.0])                               # Goal position
@@ -21,14 +15,6 @@ class MPPIController(Node):
         self.num_samples = 100
         self.horizon = 10
         self.dt = 0.1
-
-        # Kick-off the controller
-        pose = Pose()
-        pose.orientation.x = 0.0
-        pose.orientation.y = 0.0
-        pose.orientation.z = 0.0
-        pose.orientation.w = 1.0
-        self.update_state(pose)
 
     def dynamics(self, state, control):
         x, y, theta = state
@@ -64,10 +50,7 @@ class MPPIController(Node):
         best_index = np.argmin(costs)
         return trajectories[best_index], controls[best_index]
 
-    def update_state(self, msg):
-        # Update state based on the disturbed Pose (position and orientation)
-        self.current_state = np.array([msg.position.x, msg.position.y, self.quaternion_to_theta(msg.orientation)])
-
+    def update_state(self):
         # Sample trajectories
         trajectories, controls = self.sample_trajectories(self.num_samples, self.horizon, self.current_state)
         best_trajectory, best_controls = self.select_best_trajectory(trajectories, controls, self.goal, self.obstacles)
@@ -78,21 +61,10 @@ class MPPIController(Node):
         cmd.angular.z = best_controls[0][1]
         self.twist_publisher_.publish(cmd)
 
-        # Send updated state
-        pose = Pose()
-        predicted_pose = self.dynamics(self.current_state, (best_controls[0][0], best_controls[0][1]))
-        pose.position.x = predicted_pose[0]
-        pose.position.y = predicted_pose[1]
-        pose.position.z = 0.0
+        # Compute the next state
+        self.current_state = self.dynamics(self.current_state, best_controls[0])
 
-        # Convert theta to quaternion (for simplicity, assume no roll/pitch in 2D)
-        pose.orientation.x = 0.0
-        pose.orientation.y = 0.0
-        pose.orientation.z = np.sin(self.current_state[2] / 2)  # 2D orientation as z-component
-        pose.orientation.w = np.cos(self.current_state[2] / 2)  # 2D orientation as w-component
+        # Apply random disturbance to position (x, y)
+        disturbance = np.random.normal(0, 0.05, size=self.current_state.shape)
+        self.current_state = self.current_state + disturbance
 
-        self.state_publisher_.publish(pose)
-
-    def quaternion_to_theta(self, quat):
-        # Convert quaternion to 2D angle (theta), assuming the rotation is around the z-axis
-        return 2 * np.arctan2(quat.z, quat.w)
