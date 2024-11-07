@@ -4,8 +4,8 @@ package_name = 'mppi_controller'
 
 setup(
     name=package_name,
-    version='0.0.0',
-    packages=find_packages(exclude=['test']),
+    version='0.0.1',
+    packages=find_packages(),
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -13,13 +13,13 @@ setup(
     ],
     install_requires=['setuptools'],
     zip_safe=True,
-    maintainer='root',
-    maintainer_email='root@todo.todo',
-    description='TODO: Package description',
-    license='TODO: License declaration',
-    tests_require=['pytest'],
+    maintainer='Stanislaw Piasecki',
+    maintainer_email='spiasecki@ethz.ch',
+    description='MPPI controller for a walking robot',
+    license='BSD',
     entry_points={
         'console_scripts': [
+            # Example: 'controller_node = mppi_controller.main:main',
         ],
     },
 )
