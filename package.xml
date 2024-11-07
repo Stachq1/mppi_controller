@@ -7,6 +7,11 @@
   <maintainer email="spiasecki@ethz.ch">root</maintainer>
   <license>BSD</license>
 
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>rclpy</depend>
+
   <export>
     <build_type>ament_python</build_type>
   </export>
