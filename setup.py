@@ -8,7 +8,7 @@ setup(
     packages=find_packages(),
     data_files=[
         ('share/ament_index/resource_index/packages',
-            ['resource/' + package_name]),
+         ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
     install_requires=['setuptools'],
@@ -19,7 +19,7 @@ setup(
     license='BSD',
     entry_points={
         'console_scripts': [
-            # Example: 'controller_node = mppi_controller.main:main',
+            'controller_and_disturbance_node = mppi_controller.main:main',  # The main entry point to run both nodes
         ],
     },
 )
