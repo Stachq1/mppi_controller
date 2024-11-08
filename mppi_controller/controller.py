@@ -2,7 +2,7 @@ from rclpy.node import Node
 import numpy as np
 
 from geometry_msgs.msg import Pose, Point, Twist
-from std_msgs.msg import ColorRGBA
+from std_msgs.msg import ColorRGBA, Header
 from visualization_msgs.msg import Marker
 
 class MPPIController(Node):
@@ -56,37 +56,40 @@ class MPPIController(Node):
 
     def visualize_robot(self):
         # Create and initialize the Marker for the robot (a small sphere)
+        header = Header()
+        header.stamp = self.get_clock().now().to_msg()
+        header.frame_id = "map"
+
         marker = Marker(
-            header=self.get_clock().now().to_msg(),
+            header=header,
             ns="robot",
             id=0,
             type=Marker.SPHERE,
             action=Marker.ADD,
-            pose=Pose(position=Point(self.current_state[0], self.current_state[1], 0.0)),
-            scale=Point(0.1, 0.1, 0.1),  # Size of the sphere (robot size)
+            pose=Pose(position=Point(x=self.current_state[0], y=self.current_state[1], z=0.0)),  # Corrected this line
+            scale=Point(x=0.1, y=0.1, z=0.1),  # Size of the sphere (robot size)
             color=ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)  # Red color, full opacity
         )
-
-        # Set the frame_id for the header
-        marker.header.frame_id = "map"
 
         # Publish the marker
         self.marker_publisher_.publish(marker)
 
+
     def visualize_trajectory(self, trajectory):
         # Create and initialize the Marker for the trajectory (line strip)
+        header = Header()
+        header.stamp = self.get_clock().now().to_msg()
+        header.frame_id = "map"
+
         marker = Marker(
-            header=self.get_clock().now().to_msg(),
+            header=header,
             ns="trajectory",
             id=1,
             type=Marker.LINE_STRIP,
             action=Marker.ADD,
-            scale=Point(0.05, 0.05, 0.05),  # Thickness of the line
+            scale=Point(x=0.05, y=0.05, z=0.05),  # Thickness of the line
             color=ColorRGBA(r=0.0, g=0.0, b=1.0, a=1.0)  # Blue color for the trajectory
         )
-
-        # Set frame_id for the header
-        marker.header.frame_id = "map"
 
         # Add points from the trajectory (z = 0 for 2D)
         marker.points = [Point(x=state[0], y=state[1], z=0.0) for state in trajectory]
@@ -96,20 +99,21 @@ class MPPIController(Node):
 
     def visualize_obstacles(self):
         # Create and publish a Marker for each obstacle
+        header = Header()
+        header.stamp = self.get_clock().now().to_msg()
+        header.frame_id = "map"
+
         for i, obs in enumerate(self.obstacles):
             marker = Marker(
-                header=self.get_clock().now().to_msg(),
+                header=header,
                 ns="obstacle",
-                id=i + 2,  # Different ID for each obstacle
+                id=i+2,  # Different ID for each obstacle
                 type=Marker.SPHERE,
                 action=Marker.ADD,
-                pose=Pose(position=Point(obs[0], obs[1], 0.0)),  # Assuming 2D plane
-                scale=Point(0.2, 0.2, 0.2),  # Size of the sphere (obstacle size)
+                pose=Pose(position=Point(x=obs[0], y=obs[1], z=0.0)),  # Assuming 2D plane
+                scale=Point(x=0.2, y=0.2, z=0.2),  # Size of the sphere (obstacle size)
                 color=ColorRGBA(r=1.0, g=1.0, b=0.0, a=1.0)  # Green color, full opacity
             )
-
-            # Set the frame_id for the header
-            marker.header.frame_id = "map"
 
             # Publish the obstacle marker
             self.marker_publisher_.publish(marker)
