@@ -132,3 +132,8 @@ class MPPIController(Node):
         # Apply random disturbance to position (x, y)
         disturbance = np.random.normal(0, 0.05, size=self.current_state.shape)
         self.current_state = self.current_state + disturbance
+
+        # Visualize the state
+        self.visualize_robot()
+        self.visualize_trajectory(best_trajectory)
+        self.visualize_obstacles()
