@@ -41,7 +41,7 @@ class MPPIController(Node):
 
     def cost_function(self, trajectory, goal, obstacles, control_effort_weight=0.1):
         goal_cost = np.linalg.norm(trajectory[-1][:2] - goal[:2])
-        obstacle_cost = sum(np.exp(-np.linalg.norm(trajectory[:, :2] - obs[:2], axis=1)) for obs in obstacles)
+        obstacle_cost = sum(np.sum(np.exp(-np.linalg.norm(trajectory[:, :2] - obs[:2], axis=1))) for obs in obstacles)
         control_cost = control_effort_weight * np.sum(np.square(trajectory[1:] - trajectory[:-1]))
         return goal_cost + obstacle_cost + control_cost
 
@@ -67,4 +67,3 @@ class MPPIController(Node):
         # Apply random disturbance to position (x, y)
         disturbance = np.random.normal(0, 0.05, size=self.current_state.shape)
         self.current_state = self.current_state + disturbance
-
