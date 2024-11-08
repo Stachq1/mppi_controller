@@ -43,7 +43,7 @@ class MPPIController(Node):
             controls.append(control_seq)
         return trajectories, controls
 
-    def cost_function(self, trajectory, goal, obstacles, control_effort_weight=0.1):
+    def cost_function(self, trajectory, goal, obstacles, control_effort_weight=0.05):
         goal_cost = np.linalg.norm(trajectory[-1][:2] - goal[:2])
         obstacle_cost = sum(np.sum(np.exp(-np.linalg.norm(trajectory[:, :2] - obs[:2], axis=1))) for obs in obstacles)
         control_cost = control_effort_weight * np.sum(np.square(trajectory[1:] - trajectory[:-1]))
@@ -54,26 +54,39 @@ class MPPIController(Node):
         best_index = np.argmin(costs)
         return trajectories[best_index], controls[best_index]
 
-    def visualize_robot(self):
+    def visualize_robot_and_goal(self):
         # Create and initialize the Marker for the robot (a small sphere)
         header = Header()
         header.stamp = self.get_clock().now().to_msg()
         header.frame_id = "map"
 
-        marker = Marker(
+        # Visualize the robot as a red sphere
+        robot_marker = Marker(
             header=header,
             ns="robot",
             id=0,
             type=Marker.SPHERE,
             action=Marker.ADD,
-            pose=Pose(position=Point(x=self.current_state[0], y=self.current_state[1], z=0.0)),  # Corrected this line
-            scale=Vector3(x=0.1, y=0.1, z=0.1),  # Size of the sphere (robot size)
+            pose=Pose(position=Point(x=self.current_state[0], y=self.current_state[1], z=0.0)),
+            scale=Vector3(x=0.1, y=0.1, z=0.1),  # Size of the robot
             color=ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)  # Red color, full opacity
         )
 
-        # Publish the marker
-        self.marker_publisher_.publish(marker)
+        # Visualize the goal as a blue sphere (or any other color/shape)
+        goal_marker = Marker(
+            header=header,
+            ns="goal",
+            id=1,
+            type=Marker.SPHERE,
+            action=Marker.ADD,
+            pose=Pose(position=Point(x=self.goal_state[0], y=self.goal_state[1], z=0.0)),  # Goal position
+            scale=Vector3(x=0.1, y=0.1, z=0.1),  # Size of the goal
+            color=ColorRGBA(r=0.0, g=0.0, b=1.0, a=1.0)  # Blue color, full opacity
+        )
 
+        # Publish both the robot and goal markers
+        self.marker_publisher_.publish(robot_marker)
+        self.marker_publisher_.publish(goal_marker)
 
     def visualize_trajectory(self, trajectory):
         # Create and initialize the Marker for the trajectory (line strip)
@@ -84,7 +97,7 @@ class MPPIController(Node):
         marker = Marker(
             header=header,
             ns="trajectory",
-            id=1,
+            id=2,
             type=Marker.LINE_STRIP,
             action=Marker.ADD,
             scale=Vector3(x=0.05, y=0.05, z=0.05),  # Thickness of the line
@@ -107,7 +120,7 @@ class MPPIController(Node):
             marker = Marker(
                 header=header,
                 ns="obstacle",
-                id=i+2,  # Different ID for each obstacle
+                id=i+3,  # Different ID for each obstacle
                 type=Marker.SPHERE,
                 action=Marker.ADD,
                 pose=Pose(position=Point(x=obs[0], y=obs[1], z=0.0)),  # Assuming 2D plane
@@ -138,6 +151,6 @@ class MPPIController(Node):
         self.current_state = self.current_state + disturbance
 
         # Visualize the state
-        self.visualize_robot()
+        self.visualize_robot_and_goal()
         self.visualize_trajectory(best_trajectory)
         self.visualize_obstacles()

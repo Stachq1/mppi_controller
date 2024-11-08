@@ -7,7 +7,12 @@ WORKDIR /root
 COPY . /root/mppi_controller
 
 # Update the package list and install dependencies
-RUN apt-get update && apt-get install -y
+RUN apt-get update && apt-get install -y \
+    ros-humble-rviz2 \
+    libogre-1.9-dev
+
+# Allow rviz to find the Ogre libraries
+RUN export LD_LIBRARY_PATH=/opt/ros/humble/opt/rviz_ogre_vendor/lib:$LD_LIBRARY_PATH
 
 # Source the ROS environment
 RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
