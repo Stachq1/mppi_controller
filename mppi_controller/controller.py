@@ -1,7 +1,7 @@
 from rclpy.node import Node
 import numpy as np
 
-from geometry_msgs.msg import Pose, Point, Twist
+from geometry_msgs.msg import Pose, Point, Twist, Vector3
 from std_msgs.msg import ColorRGBA, Header
 from visualization_msgs.msg import Marker
 
@@ -67,7 +67,7 @@ class MPPIController(Node):
             type=Marker.SPHERE,
             action=Marker.ADD,
             pose=Pose(position=Point(x=self.current_state[0], y=self.current_state[1], z=0.0)),  # Corrected this line
-            scale=Point(x=0.1, y=0.1, z=0.1),  # Size of the sphere (robot size)
+            scale=Vector3(x=0.1, y=0.1, z=0.1),  # Size of the sphere (robot size)
             color=ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)  # Red color, full opacity
         )
 
@@ -87,7 +87,7 @@ class MPPIController(Node):
             id=1,
             type=Marker.LINE_STRIP,
             action=Marker.ADD,
-            scale=Point(x=0.05, y=0.05, z=0.05),  # Thickness of the line
+            scale=Vector3(x=0.05, y=0.05, z=0.05),  # Thickness of the line
             color=ColorRGBA(r=0.0, g=0.0, b=1.0, a=1.0)  # Blue color for the trajectory
         )
 
@@ -111,7 +111,7 @@ class MPPIController(Node):
                 type=Marker.SPHERE,
                 action=Marker.ADD,
                 pose=Pose(position=Point(x=obs[0], y=obs[1], z=0.0)),  # Assuming 2D plane
-                scale=Point(x=0.2, y=0.2, z=0.2),  # Size of the sphere (obstacle size)
+                scale=Vector3(x=0.2, y=0.2, z=0.2),  # Size of the sphere (obstacle size)
                 color=ColorRGBA(r=1.0, g=1.0, b=0.0, a=1.0)  # Green color, full opacity
             )
 
