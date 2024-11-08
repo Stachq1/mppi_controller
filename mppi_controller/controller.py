@@ -43,10 +43,10 @@ class MPPIController(Node):
             controls.append(control_seq)
         return trajectories, controls
 
-    def cost_function(self, trajectory, goal, obstacles, control_effort_weight=0.05):
-        goal_cost = np.linalg.norm(trajectory[-1][:2] - goal[:2])
-        obstacle_cost = sum(np.sum(np.exp(-np.linalg.norm(trajectory[:, :2] - obs[:2], axis=1))) for obs in obstacles)
-        control_cost = control_effort_weight * np.sum(np.square(trajectory[1:] - trajectory[:-1]))
+    def cost_function(self, trajectory, goal, obstacles, control_cost_weight=0.05, goal_cost_weight=1.5, obstacle_cost_weight=0.5):
+        goal_cost = goal_cost_weight * np.linalg.norm(trajectory[-1][:2] - goal[:2])
+        obstacle_cost = obstacle_cost_weight * sum(np.sum(np.exp(-np.linalg.norm(trajectory[:, :2] - obs[:2], axis=1))) for obs in obstacles)
+        control_cost = control_cost_weight * np.sum(np.square(trajectory[1:] - trajectory[:-1]))
         return goal_cost + obstacle_cost + control_cost
 
     def select_best_trajectory(self, trajectories, controls, goal, obstacles):
@@ -68,8 +68,8 @@ class MPPIController(Node):
             type=Marker.SPHERE,
             action=Marker.ADD,
             pose=Pose(position=Point(x=self.current_state[0], y=self.current_state[1], z=0.0)),
-            scale=Vector3(x=0.1, y=0.1, z=0.1),  # Size of the robot
-            color=ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)  # Red color, full opacity
+            scale=Vector3(x=0.1, y=0.1, z=0.1),
+            color=ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)
         )
 
         # Visualize the goal as a blue sphere (or any other color/shape)
@@ -79,9 +79,9 @@ class MPPIController(Node):
             id=1,
             type=Marker.SPHERE,
             action=Marker.ADD,
-            pose=Pose(position=Point(x=self.goal_state[0], y=self.goal_state[1], z=0.0)),  # Goal position
-            scale=Vector3(x=0.1, y=0.1, z=0.1),  # Size of the goal
-            color=ColorRGBA(r=0.0, g=0.0, b=1.0, a=1.0)  # Blue color, full opacity
+            pose=Pose(position=Point(x=self.goal[0], y=self.goal[1], z=0.0)),
+            scale=Vector3(x=0.1, y=0.1, z=0.1),
+            color=ColorRGBA(r=0.0, g=0.0, b=1.0, a=1.0)
         )
 
         # Publish both the robot and goal markers
@@ -123,9 +123,9 @@ class MPPIController(Node):
                 id=i+3,  # Different ID for each obstacle
                 type=Marker.SPHERE,
                 action=Marker.ADD,
-                pose=Pose(position=Point(x=obs[0], y=obs[1], z=0.0)),  # Assuming 2D plane
-                scale=Vector3(x=0.2, y=0.2, z=0.2),  # Size of the sphere (obstacle size)
-                color=ColorRGBA(r=1.0, g=1.0, b=0.0, a=1.0)  # Green color, full opacity
+                pose=Pose(position=Point(x=obs[0], y=obs[1], z=0.0)),
+                scale=Vector3(x=0.3, y=0.3, z=0.3),
+                color=ColorRGBA(r=1.0, g=1.0, b=0.0, a=1.0)
             )
 
             # Publish the obstacle marker
@@ -147,7 +147,7 @@ class MPPIController(Node):
         self.current_state = self.dynamics(self.current_state, best_controls[0])
 
         # Apply random disturbance to position (x, y)
-        disturbance = np.random.normal(0, 0.05, size=self.current_state.shape)
+        disturbance = np.random.normal(0, 0.02, size=self.current_state.shape)
         self.current_state = self.current_state + disturbance
 
         # Visualize the state
