@@ -44,7 +44,7 @@ class MPPIController(Node):
         return trajectories, controls
 
     def cost_function(self, trajectory, goal, obstacles, control_cost_weight=0.05, goal_cost_weight=1.5, obstacle_cost_weight=0.5):
-        goal_cost = goal_cost_weight * np.linalg.norm(trajectory[-1][:2] - goal[:2])
+        goal_cost = goal_cost_weight * np.linalg.norm(trajectory[:, :2] - goal[:2])
         obstacle_cost = obstacle_cost_weight * sum(np.sum(np.exp(-np.linalg.norm(trajectory[:, :2] - obs[:2], axis=1))) for obs in obstacles)
         control_cost = control_cost_weight * np.sum(np.square(trajectory[1:] - trajectory[:-1]))
         return goal_cost + obstacle_cost + control_cost
