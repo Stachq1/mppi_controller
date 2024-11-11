@@ -29,28 +29,38 @@ class MPPIController(Node):
         return np.array([x_new, y_new, theta_new])
 
     def sample_trajectories(self, num_samples, horizon, state):
-        trajectories = []
-        controls = []
-        for _ in range(num_samples):
-            trajectory = [state]
-            control_seq = []
-            for _ in range(horizon):
-                control = np.random.uniform(-1, 1, size=(2,))  # Random control for sampling
-                new_state = self.dynamics(trajectory[-1], control)
-                trajectory.append(new_state)
-                control_seq.append(control)
-            trajectories.append(np.array(trajectory))
-            controls.append(control_seq)
+        # (number of states x horizon with initial state x state dimension)
+        trajectories = np.zeros((num_samples, horizon + 1, 3))
+        # (number of states x horizon x control dimension)
+        controls = np.random.uniform(-1, 1, size=(num_samples, horizon, 2))
+
+        # Set the initial state across all samples
+        trajectories[:, 0, :] = state
+
+        # Perform the trajectory sampling over the horizon
+        for t in range(horizon):
+            # Compute the new states for all samples based on the controls and update trajectories
+            next_states = self.dynamics(trajectories[:, t, :], controls[:, t, :])
+            trajectories[:, t + 1, :] = next_states
         return trajectories, controls
 
-    def cost_function(self, trajectory, goal, obstacles, control_cost_weight=0.05, goal_cost_weight=1.5, obstacle_cost_weight=0.5):
-        goal_cost = goal_cost_weight * np.linalg.norm(trajectory[:, :2] - goal[:2])
-        obstacle_cost = obstacle_cost_weight * sum(np.sum(np.exp(-np.linalg.norm(trajectory[:, :2] - obs[:2], axis=1))) for obs in obstacles)
-        control_cost = control_cost_weight * np.sum(np.square(trajectory[1:] - trajectory[:-1]))
-        return goal_cost + obstacle_cost + control_cost
+    def cost_function(self, trajectories, controls, goal, obstacles, control_cost_weight=0.05, goal_cost_weight=1.5, obstacle_cost_weight=0.5):
+        # Goal Cost: Euclidean distance from the last state to the goal for each trajectory
+        goal_costs = goal_cost_weight * np.linalg.norm(trajectories[:, :, :2] - goal[:2], axis=1)
+
+        # Obstacle Cost: Repulsive cost for each trajectory based on proximity to each obstacle
+        obstacle_costs = np.zeros(trajectories.shape[0])  # Shape (num_samples,)
+        for obs in obstacles:
+            distances = np.linalg.norm(trajectories[:, :, :2] - obs[:2], axis=2)  # Shape (num_samples, horizon + 1)
+            obstacle_costs += obstacle_cost_weight * np.sum(np.exp(-distances), axis=1)  # Sum over horizon
+
+        # Control Cost: Sum of squared control values (differences between successive states)
+        control_costs = control_cost_weight * np.sum(np.square(controls), axis=(1, 2))  # Shape (num_samples,)
+
+        return goal_costs + obstacle_costs + control_costs  # Shape (num_samples,)
 
     def select_best_trajectory(self, trajectories, controls, goal, obstacles):
-        costs = [self.cost_function(traj, goal, obstacles) for traj in trajectories]
+        costs = self.cost_function(trajectories, controls, goal, obstacles)
         best_index = np.argmin(costs)
         return trajectories[best_index], controls[best_index]
 
