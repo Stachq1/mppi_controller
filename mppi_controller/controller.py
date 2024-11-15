@@ -13,14 +13,14 @@ class MPPIController(Node):
         self.marker_publisher_ = self.create_publisher(Marker, '/visualization_marker', 10)
         self.timer = self.create_timer(0.1, self.update_state)
 
-        self.num_samples = 100
-        self.horizon = 10
+        self.num_samples = 2000
+        self.horizon = 30
         self.dt = 0.1
 
-        self.curr_state = np.array([0.0, 0.0, 0.0])                         # Starting position
-        self.goal = np.array([5.0, 5.0, 0.0])                               # Goal position
-        self.obstacles = [np.array([2.0, 2.0]), np.array([3.0, 4.0])]       # Dynamic obstacles
-        self.prev_controls = np.ones((self.num_samples, self.horizon, 2))   # Previous control commands initialized to ones
+        self.curr_state = np.array([0.0, 0.0, 0.0])                                                # Starting position
+        self.goal = np.array([5.0, 5.0, 0.0])                                                      # Goal position
+        self.obstacles = [np.array([2.0, 2.0]), np.array([3.0, 4.0])]                              # Dynamic obstacles
+        self.prev_controls = np.random.normal(0, 0.5, size=(self.num_samples, self.horizon, 2))    # Previous control commands
 
     def dynamics(self, state, control):
         x, y, theta = state
@@ -52,7 +52,7 @@ class MPPIController(Node):
                 trajectories[i, t + 1, :] = self.dynamics(trajectories[i, t, :], controls[i, t, :])
         return trajectories, controls
 
-    def cost_function(self, trajectories, controls, control_cost_weight=0.05, goal_cost_weight=1.5, terminal_goal_cost_weight=10, obstacle_cost_weight=0.5):
+    def cost_function(self, trajectories, controls, control_cost_weight=0.5, goal_cost_weight=2.0, terminal_goal_cost_weight=10, obstacle_cost_weight=1.0):
         # Goal Cost: Euclidean distance from all trajectory steps (except last one) to the goal
         goal_costs = goal_cost_weight * np.sum(np.linalg.norm(trajectories[:, :-1, :2] - self.goal[:2], axis=2), axis=1)
 
