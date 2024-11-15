@@ -33,6 +33,27 @@ class Obstacle:
     def get_position(self) -> np.ndarray:
         return self.curr_pos
 
+    def get_trajectory(self, horizon, dt):
+        trajectory = np.zeros((horizon + 1, 2))
+        curr_pos = np.copy(self.curr_pos)
+        vel = np.copy(self.vel)
+        trajectory[0, :] = curr_pos
+
+        for i in range(horizon):
+            # Append the current position to the trajectory list
+            trajectory[i + 1, :] = curr_pos
+
+            # Update the position based on velocity and time step
+            curr_pos += vel * dt
+
+            # Reverse direction if the obstacle reaches either the start or end position
+            if np.linalg.norm(curr_pos - self.end_pos) < 0.1:
+                vel *= -1
+            elif np.linalg.norm(curr_pos - self.start_pos) < 0.1:
+                vel *= -1
+
+        return trajectory
+
     def visualize_obstacle(self, stamp):
         # Create and publish a Marker for each obstacle
         header = Header()
