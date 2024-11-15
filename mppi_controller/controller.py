@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 import numpy as np
-from obstacle import Obstacle
+from mppi_controller.obstacle import Obstacle
 
 from geometry_msgs.msg import Pose, Point, Twist, Vector3
 from std_msgs.msg import ColorRGBA, Header
