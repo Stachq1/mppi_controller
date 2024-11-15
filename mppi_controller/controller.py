@@ -54,7 +54,7 @@ class MPPIController(Node):
             trajectories[:, t + 1, :] = self.dynamics(trajectories[:, t, :], controls[:, t, :])
         return trajectories, controls
 
-    def cost_function(self, trajectories, controls, control_cost_weight=1.0, goal_cost_weight=2.5, terminal_goal_cost_weight=8.0, obstacle_cost_weight=2.2):
+    def cost_function(self, trajectories, controls, control_cost_weight=1.2, goal_cost_weight=2.5, terminal_goal_cost_weight=8.0, obstacle_cost_weight=2.2):
         # Goal Cost: Euclidean distance from all trajectory steps (except last one) to the goal
         goal_costs = goal_cost_weight * np.sum(np.linalg.norm(trajectories[:, :-1, :2] - self.goal[:2], axis=2), axis=1)
 
