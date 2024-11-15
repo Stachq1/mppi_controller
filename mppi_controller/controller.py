@@ -138,12 +138,6 @@ class MPPIController(Node):
         # Publish the trajectory marker
         self.marker_publisher_.publish(marker)
 
-    def visualize_obstacles(self):
-        # Create and publish a Marker for each obstacle
-        header = Header()
-        header.stamp = self.get_clock().now().to_msg()
-        header.frame_id = "map"
-
     def update_state(self):
         # Sample trajectories
         trajectories, controls = self.sample_trajectories()
