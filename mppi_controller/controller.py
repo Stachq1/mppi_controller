@@ -23,12 +23,10 @@ class MPPIController(Node):
         self.prev_controls = np.random.normal(0, 0.5, size=(self.num_samples, self.horizon, 2))    # Previous control commands
 
     def dynamics(self, state, control):
-        x, y, theta = state
-        v, w = control
-        x_new = x + v * np.cos(theta) * self.dt
-        y_new = y + v * np.sin(theta) * self.dt
-        theta_new = theta + w * self.dt
-        return np.array([x_new, y_new, theta_new])
+        state[:, 0] = state[:, 0] + control[:, 0] * np.cos(state[:, 2]) * self.dt       # x = x + v * cos(theta) * dt
+        state[:, 1] = state[:, 1] + control[:, 0] * np.sin(state[:, 2]) * self.dt       # y = y + v * sin(theta) * dt
+        state[:, 2] = state[:, 2] + control[:, 1] * self.dt                             # theta = theta + w * dt
+
 
     def sample_trajectories(self):
         # Initialize the trajectories with the initial state
@@ -45,11 +43,10 @@ class MPPIController(Node):
         # Update the previous control for the next iteration
         self.prev_controls = controls
 
-        # Perform the trajectory sampling over the horizon and samples
-        for i in range(self.num_samples):
-            for t in range(self.horizon):
-                # Compute the new states for all samples based on the controls and update trajectories
-                trajectories[i, t + 1, :] = self.dynamics(trajectories[i, t, :], controls[i, t, :])
+        # Perform the trajectory sampling over the horizon
+        for t in range(self.horizon):
+            # Compute the new states for all samples based on the controls and update trajectories
+            trajectories[:, t + 1, :] = self.dynamics(trajectories[:, t, :], controls[:, t, :])
         return trajectories, controls
 
     def cost_function(self, trajectories, controls, control_cost_weight=0.5, goal_cost_weight=2.0, terminal_goal_cost_weight=10, obstacle_cost_weight=1.0):
@@ -165,7 +162,7 @@ class MPPIController(Node):
         self.twist_publisher_.publish(cmd)
 
         # Compute the next state
-        self.curr_state = self.dynamics(self.curr_state, best_controls[0, :])
+        self.curr_state = self.dynamics(self.curr_state.reshape(1, -1), best_controls[0, :].reshape(1, -1))
 
         # Apply random disturbance to position (x, y)
         disturbance = np.random.normal(0, 0.01, size=self.curr_state.shape)
