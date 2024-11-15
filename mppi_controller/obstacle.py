@@ -12,7 +12,7 @@ class Obstacle:
 
         # Initialize the current position of the obstacle and its velocity
         self.curr_pos = (start_pos + end_pos) / 2
-        self.vel = vel
+        self.vel = vel * (end_pos + start_pos) / 2
 
         # Generate on ID for each obstacle
         self.id = np.random.randint(10000)     # TODO: can get repeated!
