@@ -1,3 +1,4 @@
+import rclpy
 from rclpy.node import Node
 import numpy as np
 
@@ -37,7 +38,11 @@ class MPPIController(Node):
         controls = np.zeros((self.num_samples, self.horizon, 2))
         controls[:, :-1 :] = self.prev_controls[:, 1:, :]
         controls[:, -1, :] = self.prev_controls[:, -1, :]  # Repeat the last control for the last time step
-        delta_controls = np.random.normal(0, 0.25, size=(self.num_samples, self.horizon, 2))
+
+        delta_controls = np.zeros((self.num_samples, self.horizon, 2))
+        delta_controls[:, :, 0] = np.random.normal(0, 0.2, size=(self.num_samples, self.horizon))
+        delta_controls[:, :, 1] = np.random.normal(0, 0.05, size=(self.num_samples, self.horizon))
+
         controls = self.prev_controls + delta_controls
 
         # Update the previous control for the next iteration
@@ -177,5 +182,5 @@ class MPPIController(Node):
         self.visualize_trajectory(best_trajectory)
         self.visualize_obstacles()
 
-        if self.at_goal() and rospy.is_shutdown():
-            rospy.signal_shutdown("Made it to goal, shutting down the node.")
+        if self.at_goal() and rclpy.ok():  # Use rclpy.ok() to check if ROS 2 is still running
+            rclpy.shutdown()  # Use rclpy.shutdown() to shutdown the ROS 2 node
