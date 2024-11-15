@@ -13,12 +13,14 @@ class MPPIController(Node):
         self.marker_publisher_ = self.create_publisher(Marker, '/visualization_marker', 10)
         self.timer = self.create_timer(0.1, self.update_state)
 
-        self.current_state = np.array([0.0, 0.0, 0.0])                      # Starting position
-        self.goal = np.array([5.0, 5.0, 0.0])                               # Goal position
-        self.obstacles = [np.array([2.0, 2.0]), np.array([3.0, 4.0])]       # Dynamic obstacles
         self.num_samples = 100
         self.horizon = 10
         self.dt = 0.1
+
+        self.curr_state = np.array([0.0, 0.0, 0.0])                         # Starting position
+        self.goal = np.array([5.0, 5.0, 0.0])                               # Goal position
+        self.obstacles = [np.array([2.0, 2.0]), np.array([3.0, 4.0])]       # Dynamic obstacles
+        self.prev_controls = np.ones((self.num_samples, self.horizon, 2))   # Previous control commands initialized to ones
 
     def dynamics(self, state, control):
         x, y, theta = state
@@ -28,41 +30,50 @@ class MPPIController(Node):
         theta_new = theta + w * self.dt
         return np.array([x_new, y_new, theta_new])
 
-    def sample_trajectories(self, num_samples, horizon, state):
-        # (number of states x horizon with initial state x state dimension)
-        trajectories = np.zeros((num_samples, horizon + 1, 3))
-        # (number of states x horizon x control dimension)
-        controls = np.random.uniform(-1, 1, size=(num_samples, horizon, 2))
+    def sample_trajectories(self):
+        # Initialize the trajectories with the initial state
+        trajectories = np.zeros((self.num_samples, self.horizon + 1, 3))
+        trajectories[:, 0, :] = self.curr_state
 
-        # Set the initial state across all samples
-        trajectories[:, 0, :] = state
+        # Compute the controls by taking previous controls, shifting it in time and adding Gaussian noise
+        controls = np.zeros((self.num_samples, self.horizon, 2))
+        controls[:, :-1 :] = self.prev_controls[:, 1:, :]
+        controls[:, -1, :] = self.prev_controls[:, -1, :]  # Repeat the last control for the last time step
+        delta_controls = np.random.normal(0, 0.1, size=(self.num_samples, self.horizon, 2))
+        controls = self.prev_controls + delta_controls
 
-        # Perform the trajectory sampling over the horizon
-        for t in range(horizon):
-            # Compute the new states for all samples based on the controls and update trajectories
-            next_states = self.dynamics(trajectories[:, t, :], controls[:, t, :])
-            trajectories[:, t + 1, :] = next_states
+        # Update the previous control for the next iteration
+        self.prev_controls = controls
+
+        # Perform the trajectory sampling over the horizon and samples
+        for i in range(self.num_samples):
+            for t in range(self.horizon):
+                # Compute the new states for all samples based on the controls and update trajectories
+                trajectories[i, t + 1, :] = self.dynamics(trajectories[i, t, :], controls[i, t, :])
         return trajectories, controls
 
-    def cost_function(self, trajectories, controls, goal, obstacles, control_cost_weight=0.05, goal_cost_weight=1.5, obstacle_cost_weight=0.5):
-        # Goal Cost: Euclidean distance from the last state to the goal for each trajectory
-        goal_costs = goal_cost_weight * np.linalg.norm(trajectories[:, :, :2] - goal[:2], axis=1)
+    def cost_function(self, trajectories, controls, control_cost_weight=0.05, goal_cost_weight=1.5, terminal_goal_cost_weight=10, obstacle_cost_weight=0.5):
+        # Goal Cost: Euclidean distance from all trajectory steps (except last one) to the goal
+        goal_costs = goal_cost_weight * np.sum(np.linalg.norm(trajectories[:, :-1, :2] - self.goal[:2], axis=2), axis=1)
+
+        # Terminal Goal Cost: Euclidean distance from the last state in trajectory to the goal
+        terminal_goal_costs = terminal_goal_cost_weight * np.linalg.norm(trajectories[:, -1, :2] - self.goal[:2], axis=1)
 
         # Obstacle Cost: Repulsive cost for each trajectory based on proximity to each obstacle
         obstacle_costs = np.zeros(trajectories.shape[0])  # Shape (num_samples,)
-        for obs in obstacles:
+        for obs in self.obstacles:
             distances = np.linalg.norm(trajectories[:, :, :2] - obs[:2], axis=2)  # Shape (num_samples, horizon + 1)
             obstacle_costs += obstacle_cost_weight * np.sum(np.exp(-distances), axis=1)  # Sum over horizon
 
-        # Control Cost: Sum of squared control values (differences between successive states)
+        # Control Cost: L2 norm of the control commands
         control_costs = control_cost_weight * np.sum(np.square(controls), axis=(1, 2))  # Shape (num_samples,)
 
-        return goal_costs + obstacle_costs + control_costs  # Shape (num_samples,)
+        return goal_costs + terminal_goal_costs + obstacle_costs + control_costs
 
-    def select_best_trajectory(self, trajectories, controls, goal, obstacles):
-        costs = self.cost_function(trajectories, controls, goal, obstacles)
+    def select_best_trajectory(self, trajectories, controls):
+        costs = self.cost_function(trajectories, controls)
         best_index = np.argmin(costs)
-        return trajectories[best_index], controls[best_index]
+        return trajectories[best_index, :, :], controls[best_index, :, :]
 
     def visualize_robot_and_goal(self):
         # Create and initialize the Marker for the robot (a small sphere)
@@ -77,7 +88,7 @@ class MPPIController(Node):
             id=0,
             type=Marker.SPHERE,
             action=Marker.ADD,
-            pose=Pose(position=Point(x=self.current_state[0], y=self.current_state[1], z=0.0)),
+            pose=Pose(position=Point(x=self.curr_state[0], y=self.curr_state[1], z=0.0)),
             scale=Vector3(x=0.1, y=0.1, z=0.1),
             color=ColorRGBA(r=1.0, g=0.0, b=0.0, a=1.0)
         )
@@ -144,21 +155,21 @@ class MPPIController(Node):
 
     def update_state(self):
         # Sample trajectories
-        trajectories, controls = self.sample_trajectories(self.num_samples, self.horizon, self.current_state)
-        best_trajectory, best_controls = self.select_best_trajectory(trajectories, controls, self.goal, self.obstacles)
+        trajectories, controls = self.sample_trajectories()
+        best_trajectory, best_controls = self.select_best_trajectory(trajectories, controls)
 
         # Send control command
         cmd = Twist()
-        cmd.linear.x = best_controls[0][0]
-        cmd.angular.z = best_controls[0][1]
+        cmd.linear.x = best_controls[0, 0]
+        cmd.angular.z = best_controls[0, 1]
         self.twist_publisher_.publish(cmd)
 
         # Compute the next state
-        self.current_state = self.dynamics(self.current_state, best_controls[0])
+        self.curr_state = self.dynamics(self.curr_state, best_controls[0, :])
 
         # Apply random disturbance to position (x, y)
-        disturbance = np.random.normal(0, 0.02, size=self.current_state.shape)
-        self.current_state = self.current_state + disturbance
+        disturbance = np.random.normal(0, 0.01, size=self.curr_state.shape)
+        self.curr_state = self.curr_state + disturbance
 
         # Visualize the state
         self.visualize_robot_and_goal()
