@@ -33,7 +33,7 @@ class Obstacle:
     def get_position(self) -> np.ndarray:
         return self.curr_pos
 
-    def get_trajectory(self, horizon, dt):
+    def get_trajectory(self, horizon, dt) -> np.ndarray:
         trajectory = np.zeros((horizon + 1, 2))
         curr_pos = np.copy(self.curr_pos)
         vel = np.copy(self.vel)
