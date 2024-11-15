@@ -11,7 +11,7 @@ class MPPIController(Node):
         self.get_logger().info('MPPIController node has started')
         self.twist_publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
         self.marker_publisher_ = self.create_publisher(Marker, '/visualization_marker', 10)
-        self.timer = self.create_timer(0.1, self.update_state)
+        self.timer = self.create_timer(0.2, self.update_state)
 
         self.num_samples = 5000
         self.horizon = 50
