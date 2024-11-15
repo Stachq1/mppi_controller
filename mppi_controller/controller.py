@@ -13,14 +13,14 @@ class MPPIController(Node):
         self.marker_publisher_ = self.create_publisher(Marker, '/visualization_marker', 10)
         self.timer = self.create_timer(0.2, self.update_state)
 
-        self.num_samples = 5000
+        self.num_samples = 10000
         self.horizon = 50
-        self.dt = 0.1
+        self.dt = 0.05
 
         self.curr_state = np.array([0.0, 0.0, 0.0])                                                # Starting position
         self.goal = np.array([5.0, 5.0, 0.0])                                                      # Goal position
-        self.obstacles = [np.array([2.0, 2.0]), np.array([3.0, 4.0])]                              # Dynamic obstacles
-        self.prev_controls = np.random.normal(0, 0.5, size=(self.num_samples, self.horizon, 2))    # Previous control commands
+        self.obstacles = [np.array([2.0, 2.0]), np.array([3.0, 4.0]), np.array([4.0, 2.0])]        # Dynamic obstacles
+        self.prev_controls = np.random.normal(0, 1.0, size=(self.num_samples, self.horizon, 2))    # Previous control commands
 
     def dynamics(self, state, control):
         state[:, 0] = state[:, 0] + control[:, 0] * np.cos(state[:, 2]) * self.dt       # x = x + v * cos(theta) * dt
@@ -37,7 +37,7 @@ class MPPIController(Node):
         controls = np.zeros((self.num_samples, self.horizon, 2))
         controls[:, :-1 :] = self.prev_controls[:, 1:, :]
         controls[:, -1, :] = self.prev_controls[:, -1, :]  # Repeat the last control for the last time step
-        delta_controls = np.random.normal(0, 0.1, size=(self.num_samples, self.horizon, 2))
+        delta_controls = np.random.normal(0, 0.5, size=(self.num_samples, self.horizon, 2))
         controls = self.prev_controls + delta_controls
 
         # Update the previous control for the next iteration
@@ -49,7 +49,7 @@ class MPPIController(Node):
             trajectories[:, t + 1, :] = self.dynamics(trajectories[:, t, :], controls[:, t, :])
         return trajectories, controls
 
-    def cost_function(self, trajectories, controls, control_cost_weight=1.0, goal_cost_weight=2.0, terminal_goal_cost_weight=6.0, obstacle_cost_weight=2.0):
+    def cost_function(self, trajectories, controls, control_cost_weight=1.0, goal_cost_weight=2.0, terminal_goal_cost_weight=6.0, obstacle_cost_weight=1.5):
         # Goal Cost: Euclidean distance from all trajectory steps (except last one) to the goal
         goal_costs = goal_cost_weight * np.sum(np.linalg.norm(trajectories[:, :-1, :2] - self.goal[:2], axis=2), axis=1)
 
