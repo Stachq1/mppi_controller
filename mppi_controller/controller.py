@@ -13,8 +13,8 @@ class MPPIController(Node):
         self.marker_publisher_ = self.create_publisher(Marker, '/visualization_marker', 10)
         self.timer = self.create_timer(0.1, self.update_state)
 
-        self.num_samples = 2000
-        self.horizon = 30
+        self.num_samples = 5000
+        self.horizon = 50
         self.dt = 0.1
 
         self.curr_state = np.array([0.0, 0.0, 0.0])                                                # Starting position
@@ -26,7 +26,7 @@ class MPPIController(Node):
         state[:, 0] = state[:, 0] + control[:, 0] * np.cos(state[:, 2]) * self.dt       # x = x + v * cos(theta) * dt
         state[:, 1] = state[:, 1] + control[:, 0] * np.sin(state[:, 2]) * self.dt       # y = y + v * sin(theta) * dt
         state[:, 2] = state[:, 2] + control[:, 1] * self.dt                             # theta = theta + w * dt
-
+        return state
 
     def sample_trajectories(self):
         # Initialize the trajectories with the initial state
@@ -161,8 +161,9 @@ class MPPIController(Node):
         cmd.angular.z = best_controls[0, 1]
         self.twist_publisher_.publish(cmd)
 
-        # Compute the next state
+        # Compute the next state (tweak dimensions to work with vectorized function)
         self.curr_state = self.dynamics(self.curr_state.reshape(1, -1), best_controls[0, :].reshape(1, -1))
+        self.curr_state = self.curr_state.flatten()
 
         # Apply random disturbance to position (x, y)
         disturbance = np.random.normal(0, 0.01, size=self.curr_state.shape)
