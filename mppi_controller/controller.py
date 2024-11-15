@@ -11,11 +11,11 @@ class MPPIController(Node):
         self.get_logger().info('MPPIController node has started')
         self.twist_publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
         self.marker_publisher_ = self.create_publisher(Marker, '/visualization_marker', 10)
-        self.timer = self.create_timer(0.2, self.update_state)
+        self.timer = self.create_timer(0.3, self.update_state)
 
         self.num_samples = 10000
         self.horizon = 50
-        self.dt = 0.05
+        self.dt = 0.15
 
         self.curr_state = np.array([0.0, 0.0, 0.0])                                                # Starting position
         self.goal = np.array([5.0, 5.0, 0.0])                                                      # Goal position
@@ -37,7 +37,7 @@ class MPPIController(Node):
         controls = np.zeros((self.num_samples, self.horizon, 2))
         controls[:, :-1 :] = self.prev_controls[:, 1:, :]
         controls[:, -1, :] = self.prev_controls[:, -1, :]  # Repeat the last control for the last time step
-        delta_controls = np.random.normal(0, 0.5, size=(self.num_samples, self.horizon, 2))
+        delta_controls = np.random.normal(0, 0.25, size=(self.num_samples, self.horizon, 2))
         controls = self.prev_controls + delta_controls
 
         # Update the previous control for the next iteration
@@ -49,7 +49,7 @@ class MPPIController(Node):
             trajectories[:, t + 1, :] = self.dynamics(trajectories[:, t, :], controls[:, t, :])
         return trajectories, controls
 
-    def cost_function(self, trajectories, controls, control_cost_weight=1.0, goal_cost_weight=2.0, terminal_goal_cost_weight=6.0, obstacle_cost_weight=1.5):
+    def cost_function(self, trajectories, controls, control_cost_weight=1.0, goal_cost_weight=2.5, terminal_goal_cost_weight=7.0, obstacle_cost_weight=2.0):
         # Goal Cost: Euclidean distance from all trajectory steps (except last one) to the goal
         goal_costs = goal_cost_weight * np.sum(np.linalg.norm(trajectories[:, :-1, :2] - self.goal[:2], axis=2), axis=1)
 
@@ -71,6 +71,9 @@ class MPPIController(Node):
         costs = self.cost_function(trajectories, controls)
         best_index = np.argmin(costs)
         return trajectories[best_index, :, :], controls[best_index, :, :]
+
+    def at_goal(self):
+        return np.linalg.norm(self.curr_state[:2] - self.goal[:2]) < 0.1
 
     def visualize_robot_and_goal(self):
         # Create and initialize the Marker for the robot (a small sphere)
@@ -173,3 +176,6 @@ class MPPIController(Node):
         self.visualize_robot_and_goal()
         self.visualize_trajectory(best_trajectory)
         self.visualize_obstacles()
+
+        if self.at_goal() and rospy.is_shutdown():
+            rospy.signal_shutdown("Made it to goal, shutting down the node.")
