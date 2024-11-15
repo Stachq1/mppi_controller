@@ -16,7 +16,7 @@ class MPPIController(Node):
 
         self.num_samples = 10000
         self.horizon = 50
-        self.dt = 0.15
+        self.dt = 0.1
 
         self.curr_state = np.array([0.0, 0.0, 0.0])                                                # Starting position
         self.goal = np.array([5.0, 5.0, 0.0])                                                      # Goal position
@@ -54,7 +54,7 @@ class MPPIController(Node):
             trajectories[:, t + 1, :] = self.dynamics(trajectories[:, t, :], controls[:, t, :])
         return trajectories, controls
 
-    def cost_function(self, trajectories, controls, control_cost_weight=1.0, goal_cost_weight=2.5, terminal_goal_cost_weight=7.0, obstacle_cost_weight=2.0):
+    def cost_function(self, trajectories, controls, control_cost_weight=1.0, goal_cost_weight=2.5, terminal_goal_cost_weight=8.0, obstacle_cost_weight=2.2):
         # Goal Cost: Euclidean distance from all trajectory steps (except last one) to the goal
         goal_costs = goal_cost_weight * np.sum(np.linalg.norm(trajectories[:, :-1, :2] - self.goal[:2], axis=2), axis=1)
 
@@ -78,7 +78,7 @@ class MPPIController(Node):
         return trajectories[best_index, :, :], controls[best_index, :, :]
 
     def at_goal(self):
-        return np.linalg.norm(self.curr_state[:2] - self.goal[:2]) < 0.1
+        return np.linalg.norm(self.curr_state[:2] - self.goal[:2]) < 0.5
 
     def visualize_robot_and_goal(self):
         # Create and initialize the Marker for the robot (a small sphere)
