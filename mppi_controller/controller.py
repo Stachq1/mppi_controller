@@ -21,7 +21,8 @@ class MPPIController(Node):
 
         self.curr_state = np.array([0.0, 0.0, 0.0])                                                # Starting position
         self.goal = np.array([5.0, 5.0, 0.0])                                                      # Goal position
-        self.obstacles = [np.array([2.0, 2.0]), np.array([3.0, 4.0]), np.array([4.0, 2.0])]        # Dynamic obstacles
+        self.obstacles = [Obstacle(np.array([1.0, 2.0]), np.array([4.0, 2.0]), 0.2, self.marker_publisher_),
+                          Obstacle(np.array([1.0, 4.0]), np.array([4.0, 3.0]), 0.3, self.marker_publisher_)]
         self.prev_controls = np.random.normal(0, 1.0, size=(self.num_samples, self.horizon, 2))    # Previous control commands
 
     def dynamics(self, state, control):
@@ -65,7 +66,7 @@ class MPPIController(Node):
         # Obstacle Cost: Repulsive cost for each trajectory based on proximity to each obstacle
         obstacle_costs = np.zeros(trajectories.shape[0])  # Shape (num_samples,)
         for obs in self.obstacles:
-            distances = np.linalg.norm(trajectories[:, :, :2] - obs[:2], axis=2)  # Shape (num_samples, horizon + 1)
+            distances = np.linalg.norm(trajectories[:, :, :2] - obs.get_position(), axis=2)  # Shape (num_samples, horizon + 1)
             obstacle_costs += obstacle_cost_weight * np.sum(np.exp(-distances), axis=1)  # Sum over horizon
 
         # Control Cost: L2 norm of the control commands
@@ -143,22 +144,6 @@ class MPPIController(Node):
         header.stamp = self.get_clock().now().to_msg()
         header.frame_id = "map"
 
-        for i, obs in enumerate(self.obstacles):
-            marker = Marker(
-                header=header,
-                ns="obstacle",
-                id=i+3,  # Different ID for each obstacle
-                type=Marker.SPHERE,
-                action=Marker.ADD,
-                pose=Pose(position=Point(x=obs[0], y=obs[1], z=0.0)),
-                scale=Vector3(x=0.3, y=0.3, z=0.3),
-                color=ColorRGBA(r=1.0, g=1.0, b=0.0, a=1.0)
-            )
-
-            # Publish the obstacle marker
-            self.marker_publisher_.publish(marker)
-
-
     def update_state(self):
         # Sample trajectories
         trajectories, controls = self.sample_trajectories()
@@ -181,7 +166,11 @@ class MPPIController(Node):
         # Visualize the state
         self.visualize_robot_and_goal()
         self.visualize_trajectory(best_trajectory)
-        self.visualize_obstacles()
+
+        # Move the obstacles and visualize them
+        for obs in self.obstacles:
+            obs.move(self.dt)
+            obs.visualize_obstacle(self.get_clock().now().to_msg())
 
         if self.at_goal() and rclpy.ok():  # Use rclpy.ok() to check if ROS 2 is still running
             rclpy.shutdown()  # Use rclpy.shutdown() to shutdown the ROS 2 node

@@ -30,6 +30,9 @@ class Obstacle:
         elif np.linalg.norm(self.curr_pos - self.start_pos) < 0.1:
             self.vel *= -1
 
+    def get_position(self) -> np.ndarray:
+        return self.curr_pos
+
     def visualize_obstacle(self, stamp):
         # Create and publish a Marker for each obstacle
         header = Header()
