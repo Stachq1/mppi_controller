@@ -15,8 +15,8 @@ class MPPIController(Node):
         self.marker_publisher_ = self.create_publisher(Marker, '/mppi_visualization', 10)
         self.timer = self.create_timer(0.3, self.update_state)
 
-        self.num_samples = 10000
-        self.horizon = 50
+        self.num_samples = 20000
+        self.horizon = 40
         self.dt = 0.05
 
         self.curr_state = np.array([0.0, 0.0, 0.0])                                                # Starting position
@@ -42,8 +42,8 @@ class MPPIController(Node):
         controls[:, -1, :] = self.prev_controls[:, -1, :]  # Repeat the last control for the last time step
 
         delta_controls = np.zeros((self.num_samples, self.horizon, 2))
-        delta_controls[:, :, 0] = np.random.normal(0, 0.15, size=(self.num_samples, self.horizon))
-        delta_controls[:, :, 1] = np.random.normal(0, 0.03, size=(self.num_samples, self.horizon))
+        delta_controls[:, :, 0] = np.random.normal(0, 0.2, size=(self.num_samples, self.horizon))
+        delta_controls[:, :, 1] = np.random.normal(0, 0.05, size=(self.num_samples, self.horizon))
 
         controls = self.prev_controls + delta_controls
 
