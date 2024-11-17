@@ -54,14 +54,14 @@ class Obstacle:
 
         return trajectory
 
-    def compute_static_obstacle_cost(self, trajectories, cutoff_distance=0.5):
+    def compute_static_obstacle_cost(self, trajectories, cutoff_distance=1.0):
         distances = np.linalg.norm(trajectories[:, :, :2] - self.get_position(), axis=2)  # Shape (num_samples, horizon + 1)
-        masked_distances = np.where(distances >= cutoff_distance, distances, np.inf)
+        masked_distances = np.where(distances >= cutoff_distance, np.inf, distances)
         return np.sum(np.exp(-masked_distances), axis=1)  # Sum over horizon
 
-    def compute_dynamic_obstacle_cost(self, trajectories, horizon, dt, cutoff_distance=0.5):
+    def compute_dynamic_obstacle_cost(self, trajectories, horizon, dt, cutoff_distance=1.0):
         distances = np.linalg.norm(trajectories[:, :, :2] - self.get_trajectory(horizon, dt), axis=2)  # Shape (num_samples, horizon + 1)
-        masked_distances = np.where(distances >= cutoff_distance, distances, np.inf)
+        masked_distances = np.where(distances >= cutoff_distance, np.inf, distances)
         return np.sum(np.exp(-masked_distances), axis=1)  # Sum over horizon
 
     def visualize_obstacle(self, stamp):
