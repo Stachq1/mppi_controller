@@ -12,12 +12,12 @@ class MPPIController(Node):
         super().__init__('mppi_controller')
         self.get_logger().info('MPPIController node has started')
         self.twist_publisher_ = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.marker_publisher_ = self.create_publisher(Marker, '/visualization_marker', 10)
+        self.marker_publisher_ = self.create_publisher(Marker, '/mppi_visualization', 10)
         self.timer = self.create_timer(0.3, self.update_state)
 
         self.num_samples = 10000
         self.horizon = 50
-        self.dt = 0.1
+        self.dt = 0.05
 
         self.curr_state = np.array([0.0, 0.0, 0.0])                                                # Starting position
         self.goal = np.array([5.0, 5.0, 0.0])                                                      # Goal position
@@ -42,8 +42,8 @@ class MPPIController(Node):
         controls[:, -1, :] = self.prev_controls[:, -1, :]  # Repeat the last control for the last time step
 
         delta_controls = np.zeros((self.num_samples, self.horizon, 2))
-        delta_controls[:, :, 0] = np.random.normal(0, 0.2, size=(self.num_samples, self.horizon))
-        delta_controls[:, :, 1] = np.random.normal(0, 0.05, size=(self.num_samples, self.horizon))
+        delta_controls[:, :, 0] = np.random.normal(0, 0.15, size=(self.num_samples, self.horizon))
+        delta_controls[:, :, 1] = np.random.normal(0, 0.03, size=(self.num_samples, self.horizon))
 
         controls = self.prev_controls + delta_controls
 
@@ -56,7 +56,7 @@ class MPPIController(Node):
             trajectories[:, t + 1, :] = self.dynamics(trajectories[:, t, :], controls[:, t, :])
         return trajectories, controls
 
-    def cost_function(self, trajectories, controls, control_cost_weight=1.2, goal_cost_weight=2.5, terminal_goal_cost_weight=8.0, obstacle_cost_weight=2.2):
+    def cost_function(self, trajectories, controls, control_cost_weight=1.0, goal_cost_weight=2.5, terminal_goal_cost_weight=7.0, obstacle_cost_weight=1.5, cutoff_distance=0.5):
         # Goal Cost: Euclidean distance from all trajectory steps (except last one) to the goal
         goal_costs = goal_cost_weight * np.sum(np.linalg.norm(trajectories[:, :-1, :2] - self.goal[:2], axis=2), axis=1)
 
@@ -66,8 +66,8 @@ class MPPIController(Node):
         # Obstacle Cost: Repulsive cost for each trajectory based on proximity to each obstacle
         obstacle_costs = np.zeros(trajectories.shape[0])  # Shape (num_samples,)
         for obs in self.obstacles:
-            distances = np.linalg.norm(trajectories[:, :, :2] - obs.get_position(), axis=2)  # Shape (num_samples, horizon + 1)
-            obstacle_costs += obstacle_cost_weight * np.sum(np.exp(-distances), axis=1)  # Sum over horizon
+            obstacle_costs += obs.compute_dynamic_obstacle_cost(trajectories, self.horizon, self.dt)
+        obstacle_costs *= obstacle_cost_weight
 
         # Control Cost: L2 norm of the control commands
         control_costs = control_cost_weight * np.sum(np.square(controls), axis=(1, 2))  # Shape (num_samples,)
@@ -154,8 +154,8 @@ class MPPIController(Node):
         self.curr_state = self.curr_state.flatten()
 
         # Apply random disturbance to position (x, y)
-        disturbance = np.random.normal(0, 0.01, size=self.curr_state.shape)
-        self.curr_state = self.curr_state + disturbance
+        # disturbance = np.random.normal(0, 0.001, size=self.curr_state.shape)
+        # self.curr_state = self.curr_state + disturbance
 
         # Visualize the state
         self.visualize_robot_and_goal()

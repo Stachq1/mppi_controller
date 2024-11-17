@@ -12,7 +12,7 @@ class Obstacle:
 
         # Initialize the current position of the obstacle and its velocity
         self.curr_pos = (start_pos + end_pos) / 2
-        self.vel = vel * (end_pos + start_pos) / 2
+        self.vel = vel * (end_pos - start_pos) / np.linalg.norm(end_pos - start_pos)
 
         # Generate on ID for each obstacle
         self.id = np.random.randint(10000)     # TODO: can get repeated!
@@ -53,6 +53,16 @@ class Obstacle:
                 vel *= -1
 
         return trajectory
+
+    def compute_static_obstacle_cost(self, trajectories, cutoff_distance=0.5):
+        distances = np.linalg.norm(trajectories[:, :, :2] - self.get_position(), axis=2)  # Shape (num_samples, horizon + 1)
+        masked_distances = np.where(distances >= cutoff_distance, distances, np.inf)
+        return np.sum(np.exp(-masked_distances), axis=1)  # Sum over horizon
+
+    def compute_dynamic_obstacle_cost(self, trajectories, horizon, dt, cutoff_distance=0.5):
+        distances = np.linalg.norm(trajectories[:, :, :2] - self.get_trajectory(horizon, dt), axis=2)  # Shape (num_samples, horizon + 1)
+        masked_distances = np.where(distances >= cutoff_distance, distances, np.inf)
+        return np.sum(np.exp(-masked_distances), axis=1)  # Sum over horizon
 
     def visualize_obstacle(self, stamp):
         # Create and publish a Marker for each obstacle
