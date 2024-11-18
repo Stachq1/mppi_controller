@@ -15,15 +15,16 @@ class MPPIController(Node):
         self.marker_publisher_ = self.create_publisher(Marker, '/mppi_visualization', 10)
         self.timer = self.create_timer(0.3, self.update_state)
 
-        self.num_samples = 20000
+        self.num_samples = 10000
         self.horizon = 40
         self.dt = 0.05
 
         self.curr_state = np.array([0.0, 0.0, 0.0])                                                # Starting position
         self.goal = np.array([5.0, 5.0, 0.0])                                                      # Goal position
-        self.obstacles = [Obstacle(np.array([1.0, 2.0]), np.array([4.0, 2.0]), 0.2, self.marker_publisher_),
-                          Obstacle(np.array([1.0, 4.0]), np.array([4.0, 3.0]), 0.3, self.marker_publisher_)]
-        self.prev_controls = np.random.normal(0, 1.0, size=(self.num_samples, self.horizon, 2))    # Previous control commands
+        self.obstacles = [Obstacle(np.array([1.0, 2.0]), np.array([4.0, 2.0]), 0.4, self.marker_publisher_),
+                          Obstacle(np.array([1.0, 4.0]), np.array([4.0, 3.0]), 0.5, self.marker_publisher_),
+                          Obstacle(np.array([5.0, 4.0]), np.array([4.0, 5.0]), 1.0, self.marker_publisher_)],
+        self.prev_controls = np.random.normal(0, 1.0, size=(self.horizon, 2))    # Previous control commands
 
     def dynamics(self, state, control):
         state[:, 0] = state[:, 0] + control[:, 0] * np.cos(state[:, 2]) * self.dt       # x = x + v * cos(theta) * dt
@@ -38,17 +39,14 @@ class MPPIController(Node):
 
         # Compute the controls by taking previous controls, shifting it in time and adding Gaussian noise
         controls = np.zeros((self.num_samples, self.horizon, 2))
-        controls[:, :-1 :] = self.prev_controls[:, 1:, :]
-        controls[:, -1, :] = self.prev_controls[:, -1, :]  # Repeat the last control for the last time step
+        controls[:, :-1 :] = self.prev_controls[1:, :]
+        controls[:, -1, :] = self.prev_controls[-1, :]  # Repeat the last control for the last time step
 
         delta_controls = np.zeros((self.num_samples, self.horizon, 2))
         delta_controls[:, :, 0] = np.random.normal(0, 0.2, size=(self.num_samples, self.horizon))
-        delta_controls[:, :, 1] = np.random.normal(0, 0.05, size=(self.num_samples, self.horizon))
+        delta_controls[:, :, 1] = np.random.normal(0, 0.1, size=(self.num_samples, self.horizon))
 
-        controls = self.prev_controls + delta_controls
-
-        # Update the previous control for the next iteration
-        self.prev_controls = controls
+        controls += delta_controls
 
         # Perform the trajectory sampling over the horizon
         for t in range(self.horizon):
@@ -142,6 +140,9 @@ class MPPIController(Node):
         # Sample trajectories
         trajectories, controls = self.sample_trajectories()
         best_trajectory, best_controls = self.select_best_trajectory(trajectories, controls)
+
+        # Update the previous control for the next iteration
+        self.prev_controls = best_controls
 
         # Send control command
         cmd = Twist()
