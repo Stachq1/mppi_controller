@@ -78,7 +78,7 @@ class MPPIController(Node):
         return trajectories[best_index, :, :], controls[best_index, :, :]
 
     def at_goal(self):
-        return np.linalg.norm(self.curr_state[:2] - self.goal[:2]) < 0.5
+        return np.linalg.norm(self.curr_state[:2] - self.goal[:2]) < 0.1
 
     def visualize_robot_and_goal(self):
         # Create and initialize the Marker for the robot (a small sphere)
