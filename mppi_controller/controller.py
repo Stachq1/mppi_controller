@@ -23,7 +23,7 @@ class MPPIController(Node):
         self.goal = np.array([5.0, 5.0, 0.0])                                                      # Goal position
         self.obstacles = [Obstacle(np.array([1.0, 2.0]), np.array([4.0, 2.0]), 0.4, self.marker_publisher_),
                           Obstacle(np.array([1.0, 4.0]), np.array([4.0, 3.0]), 0.5, self.marker_publisher_),
-                          Obstacle(np.array([5.0, 4.0]), np.array([4.0, 5.0]), 1.0, self.marker_publisher_)],
+                          Obstacle(np.array([5.0, 4.0]), np.array([4.0, 5.0]), 1.0, self.marker_publisher_)]
         self.prev_controls = np.random.normal(0, 1.0, size=(self.horizon, 2))    # Previous control commands
 
     def dynamics(self, state, control):
